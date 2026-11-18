@@ -1,0 +1,52 @@
+# =============================================================
+# .gitignore - Paper IA Inference
+# =============================================================
+
+# Secretos (NUNCA commitear)
+.env
+**/.env
+.env.*
+**/.env.*
+!**/.env.example
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+**/.venv/
+venv/
+
+# Archivos generados por el agente
+generated_scripts/
+**/generated_scripts/
+memory.json
+**/memory.json
+
+# Backups
+*.bak
+*.bak.*
+**/*.bak
+**/*.bak.*
+
+# Archivos grandes (presentaciones)
+*.pptx
+*.ppt
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Test files temporales
+test_fix.py
+**/test_fix.py
+
+# Tunnel/systemd configs (son de mi setup, no del alumno)
+*.service
+start_vps_tunnel.sh

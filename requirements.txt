@@ -1,0 +1,20 @@
+# =============================================================
+# Dependencias para "Hackers Artificiales o Sistemas Mal Disenados?"
+# =============================================================
+#
+# Instalar: pip install -r requirements.txt
+#
+# Nota: NumPy y PyTorch son para los scripts didacticos (Parts 1-2).
+# openai es para el agente (Parts 4-8).
+# No se necesita GPU -- todo corre en CPU.
+# =============================================================
+
+# --- Parte 1: Red Neuronal ---
+numpy>=1.24.0               # Algebra lineal para la red neuronal XOR
+
+# --- Parte 2: Mini-Transformer ---
+torch>=2.0.0                # PyTorch para el transformer decoder-only
+                            # Instalar CPU-only: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# --- Partes 4-8: Agente + Seguridad ---
+openai>=1.30.0              # SDK OpenAI-compatible (funciona con Ollama, vLLM, OpenRouter, etc.)

@@ -1,0 +1,312 @@
+============================================================
+EJERCICIO 2: ENTRENAR EL TRANSFORMER CON DATOS REALES
+============================================================
+
+En el Ejercicio 1 construimos la arquitectura.
+Ahora la entrenamos EN SERIO:
+  - Dataset 4x mas grande (200K chars de Shakespeare)
+  - Vocabulario 2.5x mas grande (1000 tokens)
+  - Modelo 5x mas grande (~2.5M params)
+  - Dropout para no overfittear
+  - Early stopping para no desperdiciar tiempo
+  - Weight tying (como GPT-2)
+
+Dataset completo: 1,115,394 caracteres (1.1 MB)
+Preview: First Citizen:
+Before we proceed any further, hear me speak.
+
+All:
+Speak, speak.
+
+First Citizen:
+You...
+Usando: 200,000 caracteres para training
+
+============================================================
+TOKENIZADOR BPE (1000 tokens)
+============================================================
+
+============================================================
+ENTRENANDO TOKENIZADOR BPE
+============================================================
+Texto total: 200,000 caracteres
+Texto para BPE: 30,000 caracteres
+Vocab objetivo: 1000 tokens
+Tokens iniciales: 30,000
+Merges a hacer: 740
+
+  Merge  100:                'ch ' (freq=   40, tokens=17,978)
+  Merge  200:                ';\n' (freq=   20, tokens=15,072)
+  Merge  300:                 'sc' (freq=   13, tokens=13,476)
+  Merge  400:               'had ' (freq=    9, tokens=12,398)
+  Merge  500:                 'ex' (freq=    7, tokens=11,628)
+  Merge  600:                'new' (freq=    6, tokens=10,995)
+  Merge  700:                'eld' (freq=    5, tokens=10,479)
+
+Vocabulario final: 1000 tokens
+Ratio de compresion: 19.42x (cada token = ~19.4 bytes)
+
+--- Demo del tokenizador ---
+  Original:  To be, or not to be, that is the question
+  Tokens:    13 tokens -> [604, 342, 265, 331, 347, 308, 342, 265, 396, 934, 755, 283, 524]
+  Decoded:   To be, or not to be, that is the question
+
+  Original:  KING HENRY: My lord, I fear
+  Tokens:    17 tokens -> [79, 77, 82, 75, 36, 76, 479, 86, 93, 328, 81, 273, 978, 475, 299]...
+  Decoded:   KING HENRY: My lord, I fear
+
+  Original:  Enter CORIOLANUS, with AUFIDIUS
+  Tokens:    16 tokens -> [73, 114, 120, 325, 498, 86, 77, 609, 69, 82, 287, 265, 403, 788, 77]...
+  Decoded:   Enter CORIOLANUS, with AUFIDIUS
+
+============================================================
+MODELO TRANSFORMER v2
+============================================================
+
+Arquitectura v2:
+  d_model:     128 (Ej1: 96)
+  num_heads:   4 (Ej1: 4)
+  d_head:      32
+  num_layers:  4 (Ej1: 4)
+  d_ff:        384 (Ej1: 256)
+  vocab_size:  1000 (Ej1: 400)
+  max_seq_len: 128 (Ej1: 64)
+  dropout:     0.1 (Ej1: 0)
+  weight_tying: Si (Ej1: No)
+
+Parametros:
+  Total:          981,120 (Ej1: 481,632)
+  Embedding:      128,000
+  Attention:      262,144
+  FFN:            589,824
+  Norms:            1,152
+  Ratio vs Ej1: 2.0x
+
+Comparacion de escala:
+  Ej1:          481,632 params / 50K chars / 400 vocab
+  Ej2 (este):     981,120 params / 200,000 chars / 1000 vocab
+  GPT-2:       124,000,000 params / ~10B chars / 50K vocab
+  LLaMA-7B:    6,738,000,000 params / ~1T chars / 32K vocab
+
+Tokenizando dataset completo...
+  77,821 tokens en 20.9s
+  Ratio chars/token: 2.6
+
+  Train: 8,739 secuencias
+  Val:   957 secuencias
+  Batch size:     32
+  Seq length:     128
+  Max epochs:     5
+  Early stopping: 2 epocas sin mejora
+  Learning rate:  0.0003
+  Warmup steps:   100
+  Dropout:        0.1
+
+============================================================
+INICIO DEL ENTRENAMIENTO
+============================================================
+  Epoch 1/5 | Batch  100 | Loss: 6.6791 | LR: 3.00e-04 | Tiempo: 157s
+  Epoch 1/5 | Batch  200 | Loss: 6.3763 | LR: 2.95e-04 | Tiempo: 313s
+
+  >>> Epoch 1 completada:
+      Train Loss = 6.2684
+      Val Loss   = 5.8161
+      Perplexity = 335.7
+      Tiempo     = 437s (7.3 min)
+      Mejor val  = inf
+      ** Nuevo mejor modelo guardado! **
+
+  --- Samples (Epoch 1) ---
+  [         KING HENRY:] KING HENRY:theNANUS: ANOLyI hyou NERNNE I pr e pto I r, bcr.  E: INNNNeyd HEof to ffesse , , ttved
+  [  To be or not to be] To be or not to bedone, engthgin, to, c me thhpa mcsy c,  I I y edpfeic I conentfe , e, his to thes, m the henmrth
+  [    My lord, I shall] My lord, I shallbp,  I e, thto be hyou denrenlr: Tand othppy estenyc, , ese yvf, o: his f.  S, een, , cdon the y , ae d
+  [           The noble] The nobleedthhis td rt taen erttto : LRU: UANb, vimtieny hsmy yesydder the a oby Gthseny to , fhis bt
+  [         What is the] What is thedgcere t to y pesesey ondnec, minccnere odr einiwen.  pplese seri, , iyto enghc the e, o, tdth
+
+  Epoch 2/5 | Batch  100 | Loss: 5.7185 | LR: 2.67e-04 | Tiempo: 601s
+  Epoch 2/5 | Batch  200 | Loss: 5.5197 | LR: 2.41e-04 | Tiempo: 758s
+
+  >>> Epoch 2 completada:
+      Train Loss = 5.4054
+      Val Loss   = 4.9419
+      Perplexity = 140.0
+      Tiempo     = 440s (7.3 min)
+      Mejor val  = 5.8161
+      ** Nuevo mejor modelo guardado! **
+
+  --- Samples (Epoch 2) ---
+  [         KING HENRY:] KING HENRY:'s ase OUking hoce his denbarproyiy: sy hoce, beloms of not not loager?  Toce.  COR.  LUCES: TELUC
+  [  To be or not to be] To be or not to bet mardeabarses Which have mlon. Taler with hy with youed to his fr it have ser the my your beureateade...
+  [    My lord, I shall] My lord, I shalle.  CORIOLANUS: Servingwadly the revingman: NHy benid and to wouro to his is be being ine to curth; he h...
+  [           The noble] The noble Woresoll, his to his a fed is ver ther wouy LUpe hale with her of to plow thing give sles Your cened beolongel...
+  [         What is the] What is thenave boot and beard the pdesenteaon Cangucoke my phiave of have a mence of the lile Mle you flove benbay, sok...
+
+  Epoch 3/5 | Batch  100 | Loss: 4.9416 | LR: 1.83e-04 | Tiempo: 1041s
+  Epoch 3/5 | Batch  200 | Loss: 4.8593 | LR: 1.46e-04 | Tiempo: 1196s
+
+  >>> Epoch 3 completada:
+      Train Loss = 4.8173
+      Val Loss   = 4.6326
+      Perplexity = 102.8
+      Tiempo     = 437s (7.3 min)
+      Mejor val  = 4.9419
+      ** Nuevo mejor modelo guardado! **
+
+  --- Samples (Epoch 3) ---
+  [         KING HENRY:] KING HENRY:s have be wounddon.  GLOUCESTER: The I are have gin, and a wroy: S: Thou srad houve to fall a a sterce, you h...
+  [  To be or not to be] To be or not to beenb, If I have to say; and you will be not be beeniay, I save to not to liiall the bam ce Ehis betaino...
+  [    My lord, I shall] My lord, I shall Where and I shall have not aceser to fry in your god and his him; Moishesate thowalicher to fing be the...
+  [           The noble] The noble the Sid him a brast from the fum and being ined to toovockanighech to cead book our consuloce?  CORIOLANUS: We...
+  [         What is the] What is the You must not wroy a fad of holank you have thing, of heards gongin thanither beend to sod the peoplecate, me...
+
+  Epoch 4/5 | Batch  100 | Loss: 4.6373 | LR: 8.41e-05 | Tiempo: 1482s
+  Epoch 4/5 | Batch  200 | Loss: 4.6137 | LR: 5.31e-05 | Tiempo: 1638s
+
+  >>> Epoch 4 completada:
+      Train Loss = 4.6032
+      Val Loss   = 4.5359
+      Perplexity = 93.3
+      Tiempo     = 437s (7.3 min)
+      Mejor val  = 4.6326
+      ** Nuevo mejor modelo guardado! **
+
+  --- Samples (Epoch 4) ---
+  [         KING HENRY:] KING HENRY:, by your dretalroce; He efapake who w a a suloish his muce, seaby thert my curve with by bontalice with liso...
+  [  To be or not to be] To be or not to being he be loke Or conen in wenvoice as homem being to you burrof the lay of thou my deset of the purto...
+  [    My lord, I shall] My lord, I shall That had nevoborceorce and consufentefeath pleadoned of holy sterved the heard of my cate bomem your cr...
+  [           The noble] The noble: you poolow, Dad your lit, if I was no beint dangell, in ince: but that be reeve and my soter the voighan with...
+  [         What is the] What is the As the sener in he may in inmis, woulds for hold him.  BRUTUS: Whuchard you have merroke your done; you not ...
+
+  Epoch 5/5 | Batch  100 | Loss: 4.5464 | LR: 1.43e-05 | Tiempo: 1921s
+  Epoch 5/5 | Batch  200 | Loss: 4.5435 | LR: 2.78e-06 | Tiempo: 2078s
+
+  >>> Epoch 5 completada:
+      Train Loss = 4.5420
+      Val Loss   = 4.5207
+      Perplexity = 91.9
+      Tiempo     = 437s (7.3 min)
+      Mejor val  = 4.5359
+      ** Nuevo mejor modelo guardado! **
+
+  --- Samples (Epoch 5) ---
+  [         KING HENRY:] KING HENRY:, ploy, his hokake to loy in furroist To by you are to have worlour be a gam of soce in my vy his nither his ...
+  [  To be or not to be] To be or not to bearfloy, Ply of the pear with weastarpam bilipooice before in is to ture bam to my murnar our peoplop a...
+  [    My lord, I shall] My lord, I shall To bank but with thoullow a ken his pullingis To be you, you not before your pliintoopore with mloye we...
+  [           The noble] The noble, To hat, he pall and dod it we were murregring to intenimesartilly of fapease and the likateieboon not be drou...
+  [         What is the] What is thee been of Romatemlateprom tho thou retle to fure and the moudridy, Which to furpoolokate his warsome.  GLOUCE...
+
+
+============================================================
+RESUMEN DEL ENTRENAMIENTO
+============================================================
+  Epocas completadas: 5/5
+  Tiempo total:       2207s (36.8 min)
+  Mejor val loss:     4.5207
+  Mejor perplexity:   91.9
+
+  Evolucion por epoca:
+  Epoch | Train Loss |   Val Loss | Perplexity |   Tiempo
+  ------+------------+------------+------------+---------
+      1 |     6.2684 |     5.8161 |      335.7 |     437s
+      2 |     5.4054 |     4.9419 |      140.0 |     440s
+      3 |     4.8173 |     4.6326 |      102.8 |     437s
+      4 |     4.6032 |     4.5359 |       93.3 |     437s
+      5 |     4.5420 |     4.5207 |       91.9 |     437s
+
+============================================================
+GENERACION FINAL (mejor modelo)
+============================================================
+Cargado modelo de epoch 5 (val_loss=4.5207)
+
+  Prompt: "KING HENRY:
+My noble lords"
+  [temp=0.5] KING HENRY:
+My noble lords: I am and have by of my croy his croy of his worloy to to by to merving, to have be before my croimece
+Si' the suloishervingmany of a ter of a deservingmany of his a ceservingmany of a wenanceservingmany the be
+  [temp=1.0] KING HENRY:
+My noble lordset of, my world gely, toay, we y? what they sable whood a ge is chair wealoubear tearuse, is sei'ishoundeally;
+I would thivalripasve of conpl I are I have sadead and nes is
+Sarthroke my stened me the hearmer the
+As 
+
+  Prompt: "To be, or not to be, that is"
+  [temp=0.5] To be, or not to be, that ise
+My with have the god souby homece
+He senishargroy, of holy of a loy to soigroither as with forkicate of furtion to your wongroices to be to boishentimen
+  [temp=1.0] To be, or not to be, that isthoning you akin
+For in croink of beolsod their peafeavob, as not grengicradlinsesroth of the tut, the fpalgroce the work a king is though your fall;
+Not as him you? I 
+
+  Prompt: "Enter CORIOLANUS.
+
+First Citizen:
+"
+  [temp=0.5] Enter CORIOLANUS.
+
+First Citizen:
+Y, I would I would I have done, I have cure my ho have bence to have a a toonam to done,
+Srivoivoivoisharroution the fry to his voititoolouther his took him, my tale the peopley to a ceservingmany to furronter to c
+  [temp=1.0] Enter CORIOLANUS.
+
+First Citizen:
+The elequay, me for they are I cannot no tear, I have before the kerand, if to be gand
+His not have mrech that be the subear pit.
+
+MENENIUS:
+I was menordod to lenight him?
+Bame to, a suthese my mover's our heard is by of your p.
+
+CORace with my far geaon you 
+
+  Prompt: "The king shall"
+  [temp=0.5] The king shall
+' the croid to be not be ter the being caprogroicullate his hoicensefore to whild to the wowishatecatecretancate to have your dealoicularbeniivoiiv
+  [temp=1.0] The king shall'd his countrise''logroill there the mate w to gress a wall
+As that sostopationores with sobent thy comoenes intreton
+Mend and then refore, recerly by in fatlatter-
+
+  Prompt: "ROMEO:
+What light through yonder"
+  [temp=0.5] ROMEO:
+What light through yondere, I have be by of his stineyeservingman:
+Toicrafooloy for be to have the wound and me
+You have be soy as he have bave to be a pease to cint with merrod and being of his mitordesroiceres to be a a wroillishowiceades
+  [temp=1.0] ROMEO:
+What light through yondered to studange for the cart thing starbank of in is of theeschilds I have a his holance
+Than your bedongincopretanise
+Pucrothen to they he were with wordeserfoolomours, tofale
+Mory, his cher you.
+I'll be seake to inedry tosel th
+
+============================================================
+QUE APRENDIMOS
+============================================================
+
+Lo que cambio entre Ej1 y Ej2:
+
+  1. MAS DATOS: 50K -> 200,000 chars (4x mas)
+     El modelo ve muchos mas patrones de Shakespeare.
+
+  2. MAS VOCABULARIO: 400 -> 1000 tokens (2.0x)
+     Mejor representacion del texto. Menos tokens por palabra.
+     Ratio chars/token mejora (mas cercano a los ~4 chars/token de GPT-4).
+
+  3. MAS PARAMETROS: 481K -> 981,120 (2x)
+     Mas capacidad para almacenar patrones.
+
+  4. REGULARIZACION: Dropout 0.1 + weight decay + early stopping
+     Evita que el modelo memorice el training set.
+     Sin regularizacion: train loss baja pero val loss sube (Ej1).
+     Con regularizacion: ambos bajan juntos.
+
+  5. WEIGHT TYING: embedding = output head
+     Reduce parametros y mejora la generalizacion.
+     Tecnica usada en GPT-2, T5, y otros.
+
+La leccion: la arquitectura del Transformer es una CONSTANTE.
+Lo que cambia es la escala: datos, vocabulario, parametros, compute.
+Un modelo de 2.5M params en una Pi genera texto "shakespeariano".
+Un modelo de 175B params en un datacenter genera texto "inteligente".
+La diferencia es cuantitativa, no cualitativa.
+
+EXIT CODE: 0

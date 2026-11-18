@@ -1,0 +1,253 @@
+======================================================================
+EJERCICIO 3: De Transformer a Mini-LLM (Supervised Fine-Tuning)
+======================================================================
+
+Que hacemos en este ejercicio:
+  1. Cargamos el Transformer pre-entrenado del Ej2 (Shakespeare)
+  2. Le agregamos un chat template (<|user|>, <|assistant|>, etc.)
+  3. Lo fine-tuneamos con 33 ejemplos de instruccion-respuesta
+  4. Comparamos: modelo BASE vs modelo SFT
+
+La leccion: SFT no agrega 'conocimiento'. Agrega FORMATO.
+El modelo aprende CUANDO y COMO responder, no QUE saber.
+
+======================================================================
+PASO 1: Cargar modelo pre-entrenado del Ej2
+======================================================================
+
+  Tokenizer base: 1000 tokens
+  Tokens especiales: ['<|system|>', '<|user|>', '<|assistant|>', '<|end|>', '<|pad|>']
+  Vocabulario total: 1005 tokens
+  Checkpoint Ej2: epoch 5, val_loss 4.5207
+
+  Modelo cargado: 981,760 parametros
+  Pesos pre-entrenados: 38 cargados, 2 con tamaño diferente
+  Tamaño diferente (esperado -- vocab expandido): ['tok_emb.weight', 'head.weight']
+  Embeddings de tokens especiales inicializados con media de los existentes
+  Weight tying: head.weight es tok_emb.weight = True
+
+======================================================================
+PASO 2: Modelo BASE (sin SFT) -- intenta 'chatear'
+======================================================================
+
+  El modelo base fue entrenado para COMPLETAR Shakespeare.
+  Si le ponemos un chat template, no sabe que hacer con el.
+  Va a ignorar la estructura y generar texto libre.
+
+  Pregunta: "Who is Romeo?"
+  Base:     "ou not a so,
+Which it you have craw and pasp,
+He have doulds,
+Pal's hall to soy in a sence of beaon a cove to be nam falddon,
+Thir"
+
+  Pregunta: "Tell me about the night."
+  Base:     "when is he have not a whis
+And a love but it with a fead,
+Se's gods to mongent, his deseresed the
+Of better of beast, that the people
+To by is "
+
+  Pregunta: "What is love?"
+  Base:     "ou I not is hol-turn to a kin'
+
+VOLUMNIA:
+No sation, you fralling the book miting
+To bey to dro's done.
+
+MENENIUS:
+Why not his sene's peace,
+I have "
+
+
+======================================================================
+PASO 3: Supervised Fine-Tuning (SFT)
+======================================================================
+
+  Ahora entrenamos el modelo con el chat template.
+  Solo calculamos loss en los tokens del ASSISTANT.
+  El modelo aprende: 'despues de <|user|>...<|end|><|assistant|>,
+  debo generar una respuesta relevante.'
+  Dataset original: 33 conversaciones
+  Dataset expandido: 35 ejemplos de training
+
+  Dataset SFT: 35 ejemplos
+  Tokens totales: 4,445
+  Tokens de training (assistant): 2,355 (53.0%)
+  Tokens masked (system/user/pad): 2,090
+  Secuencia maxima: 128
+  Learning rate: 0.0005
+  Epocas: 50
+
+   Epoca |     Loss |         LR |   Tiempo
+  ------ | -------- | ---------- | --------
+       1 |   5.1690 |   0.000500 |     2.0s
+       5 |   4.7703 |   0.000489 |     1.6s
+      10 |   4.5163 |   0.000457 |     1.7s
+      15 |   4.3259 |   0.000407 |     1.5s
+      20 |   4.1752 |   0.000345 |     1.4s
+      25 |   4.0358 |   0.000275 |     2.0s
+      30 |   3.9858 |   0.000205 |     1.5s
+      35 |   3.9229 |   0.000143 |     2.0s
+      40 |   3.8898 |   0.000093 |     1.9s
+      45 |   3.8397 |   0.000061 |     2.1s
+      50 |   3.8120 |   0.000050 |     1.6s
+
+  Mejor loss: 3.8120
+  Tiempo total: 84.0s (1.4 min)
+
+  Modelo SFT guardado: /home/alumno/paper-IA-inference/ejercicios/ej3_mini_llm/sft_model.pt (3.8 MB)
+
+======================================================================
+PASO 4: Comparacion -- BASE vs SFT
+======================================================================
+
+  Mismas preguntas, dos modelos diferentes.
+  Observa la diferencia en FORMATO (no en 'inteligencia').
+
+  [VISTO] Pregunta: "Who is Romeo?"
+    BASE: "ou peak
+Tam soy sop
+Buge of Romey.
+
+CLOUCESTER:
+You are not a loices to Rome.
+
+CORIOLANUS:
+You his dicape to better muw his wogs
+That not to took.
+
+"
+    SFT:  "The mray, is you have not bet. He mure is a tears his talgh. He live the trages his mughghters the fear. He proking thing and deal his a mures the kings him.. Arove is desmul his worl"
+
+  [VISTO] Pregunta: "What is love?"
+    BASE: "I have so.
+
+CORIOLANUS:
+Whom our house you have your conter of a thing.
+
+CORIOLANUS:
+Why, I have bon.
+
+CORIOLANUS:
+Foigh, what you shall be pak. Toge of love to soy:
+To "
+    SFT:  "The tray, is a coking they dure and a talters by his tragic, it is soldiero is a tray. It is deals the kiver whigh, and is sildes. He lies was talgh his see. It is sper"
+
+  [VISTO] Pregunta: "Tell me about Macbeth."
+    BASE: "Why, it bey, my dead, the being his hows for mergs.
+
+CORIOLANUS:
+I have I have me.
+
+AUFIDIUS:
+I have be mrame of the people?
+
+CORIOLANUS:
+And to dons the people.
+
+CORIOLANUS:
+If I have before not the "
+    SFT:  "The soldiero is a doin and a fool of quooking and desmero ation his soldier. It is eo is throking and a train by the nimed to descrokes of furgimes and a culies him"
+
+  [NUEVO] Pregunta: "Who is the bravest?"
+    BASE: "soldier,
+Your grige of some deaking pool, he are as I have pears?
+
+BRUTUS:
+Third of hom to fradill
+As that his bean my peal a sost a sone.
+
+MENENIUS:
+Though the better your lid: of a turp'd b"
+    SFT:  "The tuke is the mree and groke his throky his wife and the free and men.--
+Why, is joy are is a kes a frafe and despears his trakes his dom and a trakes his cooly, for des"
+
+  [NUEVO] Pregunta: "Speak of the sea."
+    BASE: "sir.
+
+BRUTUS:
+Wher a naver feath; are the peopy,
+Mive for to fall, that not our cure to you.
+
+SICINIUS:
+You have deser'd you, he have deaver of my ploige to be deak,
+He have be a stoister for his a tr"
+    SFT:  "The king are not gright to his trair his daughters the tray to be desver and a falters to a worl and des. He deal is some flokes of fray the croy his daughter and him..
+
+CORIOLA"
+
+  [NUEVO] Pregunta: "What makes a man noble?"
+    BASE: "ou deace,
+Re's a bet better to your grend,
+Dost my a liken mate of mution,
+Doy a mution, he have doice
+Hake his litions deales as you be a childeath
+Tair to be dea"
+    SFT:  "The trad is is a talters and throking and thing his muses his muse. He kester the croy his some e. He bet not is a mend. The tits his kings from fears his cogh: the delies his tray his da"
+
+
+======================================================================
+PASO 5: Demo interactiva -- El mini-LLM responde
+======================================================================
+
+  User: "Hello."
+  LLM:  "Mam is the soldiero is is the divove of Meal, that is a murghed of Arost of Adom and is a loys Laking but fool of Mool Deal Aroy. He loke to fool of quing to "
+
+  User: "Who is Hamlet?"
+  LLM:  "The stinplor is is the cror his by his daughter, and the soking and the flows for questions the flokes by foor his soldierver of Curroking and deal of Mool of Lool is b"
+
+  User: "Write a short verse."
+  LLM:  "The worly, is a mrows that you. The tears are a fureo deald and sound. It is is a traic, a tral and a tale and desters and deal of murkes and talter.--.on mure of king"
+
+  User: "Compare Romeo and Hamlet."
+  LLM:  "Here is a fure daughters the man of play.. It is a colies of pear by and couters his hom his destion of preslled and houree and the sils and coll his love and his death. It is b"
+
+  User: "What is honour?"
+  LLM:  "The muve is a mends soldierver and the chirokes to floic, desman are the soldiers for tughters the talter. He is desver of merving. He kings is a sings the plad. It is is pas"
+
+  User: "Tell me about a forest."
+  LLM:  "It is is that a fail and a trage is a trath, the murns the fureds of Mooth, by her a tray. He silgillo is the sests and to fray. The murking the trager of throve of mre"
+
+  User: "Why do stories matter?"
+  LLM:  "How are that are the worl his soul Deal Aervingmany is deal and man destions that for throking and jokes a tears it his soldiers is mooth, sing. It is before the before and a traking Des"
+
+
+======================================================================
+LECCION DEL EJERCICIO 3
+======================================================================
+
+Lo que demostramos:
+
+  1. PRE-TRAINING vs SFT:
+     - Pre-training (Ej2): el modelo aprende PATRONES del texto
+     - SFT (Ej3): el modelo aprende un FORMATO de respuesta
+     - El SFT no agrega conocimiento -- solo cambia el comportamiento
+
+  2. CHAT TEMPLATE:
+     Los tokens <|user|>, <|assistant|>, <|end|> son CONVENCIONES.
+     No son magicos. El modelo aprende que despues de <|assistant|>
+     debe generar texto que "responda" al <|user|>.
+
+  3. LOSS MASKING:
+     Solo entrenamos en tokens de assistant.
+     Esto es critico: si entrenamos en TODO (incluido el user),
+     el modelo aprenderia a "ser el usuario" tambien.
+
+  4. GENERALIZACION LIMITADA:
+     Con 33 ejemplos de SFT, el modelo generaliza un POCO.
+     Los LLMs reales usan 100K+ ejemplos de SFT.
+     Pero el principio es identico.
+
+  5. LA ANALOGIA CON LA SEGURIDAD:
+     Un modelo SFT que "rechaza" preguntas peligrosas
+     solo aprendio un PATRON estadistico de rechazo.
+     No "entiende" por que es peligroso.
+     Por eso los jailbreaks funcionan: cambian el contexto
+     para que el patron de rechazo no se active.
+
+En el siguiente ejercicio construiremos la INFERENCIA real:
+KV-cache, sampling strategies, y generacion token-a-token
+con visualizacion de probabilidades.
+
+EXIT CODE: 0

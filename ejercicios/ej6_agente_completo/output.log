@@ -1,0 +1,145 @@
+============================================================
+EJERCICIO 6: Agente Completo en Raspberry Pi
+============================================================
+
+  Modelo encontrado: tokioai-3b-v2-16k:latest
+  API: ollama en puerto 11434
+
+============================================================
+MODO AUDITORIA: Internals del agente
+============================================================
+
+  SYSTEM PROMPT (3049 chars):
+  --------------------------------------------------------
+  | You are a helpful AI assistant running on a Raspberry Pi.
+  | You have access to tools that let you interact with the system.
+  | 
+  | When you need to use a tool, output a tool call in this format:
+  | ```tool_call
+  | {"name": "tool_name", "arguments": {"key": "value"}}
+  | ```
+  | 
+  | Available tools:
+  | [
+  |   {
+  |     "type": "function",
+  |     "function": {
+  |       "name": "get_system_info",
+  |       "description": "Get system information: OS, CPU, memory, disk usage",
+  |       "parameters": {
+  |         "type": "object",
+  |         "properties": {},
+  |         "required": []
+  |       }
+  | ... (132 lines total)
+
+  HERRAMIENTAS REGISTRADAS:
+  - get_system_info: Get system information: OS, CPU, memory, disk usage
+  - calculate: Evaluate a mathematical expression safely
+  - read_file: Read contents of a file (within project directory only)
+  - list_files: List files and directories in a path
+  - get_datetime: Get current date, time, and timezone
+  - remember: Save a note to persistent memory (survives restarts)
+  - recall: Recall all saved notes from persistent memory
+
+  MEMORIA PERSISTENTE (0 notas):
+
+  MODELO:
+  - Tipo: ollama
+  - Nombre: tokioai-3b-v2-16k:latest
+  - Puerto: 11434
+
+  CONFIGURACION DE SEGURIDAD:
+  - Max rounds: 5
+  - Max response chars: 2000
+  - Max tool result chars: 4000
+  - Safe directory: /home/alumno/paper-IA-inference
+  - Memory file: /home/alumno/paper-IA-inference/ejercicios/ej6_agente_completo/memory.json
+
+  ANATOMIA DEL AGENTE:
+  +--------------------------------------------------+
+  |  Usuario                                          |
+  |    |                                              |
+  |    v                                              |
+  |  [Agent.chat()]                                   |
+  |    |                                              |
+  |    +-> [System Prompt + History + Tools]           |
+  |    |     (contexto completo, ~2K chars)            |
+  |    |                                              |
+  |    +-> [call_model()] -----> Qwen3 (Ollama)       |
+  |    |     POST /api/chat       |                   |
+  |    |                          v                   |
+  |    |                     Genera texto              |
+  |    |                     (token a token)           |
+  |    |                          |                   |
+  |    +<- respuesta (texto) <----+                   |
+  |    |                                              |
+  |    +-> [_parse_tool_calls()]                      |
+  |    |     regex + JSON parse                       |
+  |    |                                              |
+  |    +-> tool call? --NO--> respuesta final         |
+  |    |     |                                        |
+  |    |    YES                                       |
+  |    |     |                                        |
+  |    +-> [execute_tool()]                           |
+  |    |     validar nombre                           |
+  |    |     validar args                             |
+  |    |     ejecutar funcion                         |
+  |    |     retornar resultado                       |
+  |    |                                              |
+  |    +-> resultado al historial                     |
+  |    |                                              |
+  |    +-> LOOP (volver a call_model con resultado)   |
+  +--------------------------------------------------+
+
+
+============================================================
+LECCION FINAL DEL PAPER
+============================================================
+
+En 6 ejercicios construimos un agente de IA desde CERO:
+
+  Ej1: Transformer (la arquitectura que hace posible todo)
+       -> RMSNorm, RoPE, SwiGLU, Self-Attention, BPE tokenizer
+       -> 981K params, entrenable en Pi en 5 min
+
+  Ej2: Training real (el modelo aprende patrones estadisticos)
+       -> 200K chars de Shakespeare, 1000 tokens BPE
+       -> El modelo NO "entiende" Shakespeare. Memoriza patrones.
+
+  Ej3: SFT (de completar texto a seguir instrucciones)
+       -> Chat template con <|user|>, <|assistant|>
+       -> Loss masking: solo entrena en respuestas del assistant
+       -> El SFT no agrega conocimiento, solo formato
+
+  Ej4: Inferencia (lo que pasa dentro del modelo)
+       -> Forward pass: embedding -> transformer -> logits -> softmax
+       -> Sampling: greedy vs temperatura vs top-k vs top-p
+       -> KV-cache: la optimizacion que hace posible la velocidad
+
+  Ej5: Tool calling (como el modelo "actua")
+       -> El modelo genera texto con formato de tool call
+       -> El RUNTIME parsea, valida, y ejecuta
+       -> La seguridad esta en el runtime, no en el modelo
+
+  Ej6: Agente completo (todo junto)
+       -> Modelo real (Qwen3) + runtime + herramientas + memoria
+       -> Es un PROGRAMA Python, no una entidad inteligente
+
+  CONCLUSION DEL PAPER:
+  =====================
+  Los agentes de IA NO son "hackers artificiales".
+  Son programas estadisticos que generan texto token a token.
+  La seguridad no depende de "alinear" el modelo (RLHF, DPO).
+  Depende de disenar bien el RUNTIME:
+    - Validar toda tool call antes de ejecutar
+    - Sandbox estricto (principio de menor privilegio)
+    - Rate limiting y safety bounds
+    - Logging y auditoria de cada accion
+
+  Un modelo "alineado" + un runtime inseguro = sistema vulnerable.
+  Un modelo "sin alinear" + un runtime seguro = sistema seguro.
+
+  La seguridad es un problema de INGENIERIA, no de IA.
+
+EXIT CODE: 0

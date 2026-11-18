@@ -1,0 +1,317 @@
+======================================================================
+EJERCICIO 4: Inferencia Real -- KV-Cache, Sampling, Probabilidades
+======================================================================
+
+Que hacemos en este ejercicio:
+  1. Abrimos el forward pass y vemos cada capa
+  2. Comparamos 8 estrategias de sampling
+  3. Visualizamos como la temperatura cambia las probabilidades
+  4. Implementamos KV-cache y medimos el speedup
+  5. Generamos texto en 'camara lenta' (token por token)
+
+Esto es EXACTAMENTE lo que pasa dentro de ChatGPT/Claude.
+La unica diferencia es la escala (175B params vs 981K params).
+
+  Modelo cargado: 981,760 parametros
+  Fuente: sft_model.pt
+
+======================================================================
+DEMO 1: Anatomia de un Forward Pass
+======================================================================
+
+  Cada vez que el modelo genera UN token, pasa por estas capas.
+  Mostramos los numeros reales de nuestro modelo de 981K params.
+
+  Texto de entrada: "To be, or not to be"
+  Tokens: [604, 342, 265, 331, 347, 308, 342]
+  Token count: 7
+
+  [Embedding] Input: torch.Size([1, 7]) -> Output: torch.Size([1, 7, 128])
+    Cada token se convierte en un vector de 128 dimensiones
+    Norma promedio del embedding: 0.6235
+  [Bloque 0] Norma del cambio: 43.5015
+  [Bloque 1] Norma del cambio: 33.0692
+  [Bloque 2] Norma del cambio: 31.9410
+  [Bloque 3] Norma del cambio: 33.5041
+
+  [Output Head] torch.Size([1, 7, 128]) -> torch.Size([1, 7, 1005])
+    1005 logits = un score por cada token del vocabulario
+
+  Top 10 tokens mas probables despues de "To be, or not to be":
+  Rank |           Token |     Prob |    Logit
+  ---- | --------------- | -------- | --------
+     1 |             't' |  0.1092 |    5.118
+     2 |             'd' |  0.0504 |    4.345
+     3 |            'th' |  0.0492 |    4.321
+     4 |             'l' |  0.0366 |    4.025
+     5 |         'fore ' |  0.0337 |    3.944
+     6 |             'g' |  0.0311 |    3.863
+     7 |             'f' |  0.0253 |    3.654
+     8 |             'b' |  0.0158 |    3.184
+     9 |            'en' |  0.0130 |    2.988
+    10 |            'li' |  0.0112 |    2.843
+
+  Entropia de la distribucion: 4.997
+    (alta = modelo inseguro, baja = modelo confiado)
+    Entropia maxima teorica: 6.913
+
+======================================================================
+DEMO 2: Estrategias de Sampling
+======================================================================
+
+  Mismo prompt, 8 estrategias diferentes.
+  Observa como la temperatura y el filtrado cambian el resultado.
+
+  Prompt: "To be, or not to be, that is"
+  Generando 30 tokens con cada estrategia:
+
+            Greedy (T=0): lokes and a mure and a mure and desteric, the merrokes and a
+     T=0.3 (conservador): loking and throkes his mures and deals the desed. It is a mur
+        T=0.7 (balanced): loke and country bething bethaner desprouth then retray.. He a murs,
+        T=1.5 (creativo): ma.  AUFIDIUS: fricawill careret good the vidrets for als, pladudoooit: benos nekcor
+                 Top-k=5: loking and his mures his lokes of fears the slee. He king is a tra
+                Top-k=40: lend. I could be be not beytered to deads, the betle ree. Wecy, they
+               Top-p=0.5: lows his king. It is his desploking his worl him.: the seeyes of
+               Top-p=0.9: less, and of ques to murt, the som his wifs done.�Of mure for man
+
+  Prompt: "The king shall"
+  Generando 30 tokens con cada estrategia:
+
+            Greedy (T=0): eric. It is is is is is his merver and his roic, and his mervingman
+     T=0.3 (conservador): ed and of cowic, and croks his tughters and his mrice, the cro
+        T=0.7 (balanced): er. The tree beto be mother and see. It bic is are doth his a feart
+        T=1.5 (creativo): t,  answerur�In more acsaytion.very youkive frienwe deed preaon waCome but the no,
+                 Top-k=5: im. The fool is is cokes and murgs of Mookes to mericed
+                Top-k=40: ic. It is betuse of dauc. He Act is to be be whirighs, his se
+               Top-p=0.5: erith. It is is his heart. It is a merver and his a froic, his
+               Top-p=0.9: ing not liries his gic. He wife, who craon the mroke, banills
+
+======================================================================
+DEMO 3: Efecto de la Temperatura
+======================================================================
+
+  Prompt: "Romeo and Juliet"
+
+  Como la temperatura cambia la distribucion:
+
+  T=0.1  | Top1: [#######################################.] 1.000 | Entropy: 0.00 | Effective:    1 | Top5: '. ':1.000, '.':0.000, 's, ':0.000
+  T=0.5  | Top1: [###############################.........] 0.784 | Entropy: 1.08 | Effective:    7 | Top5: '. ':0.784, '.':0.093, 's, ':0.015
+  T=1.0  | Top1: [#######.................................] 0.193 | Entropy: 4.76 | Effective:   13 | Top5: '. ':0.193, '.':0.067, 's, ':0.027
+  T=2.0  | Top1: [........................................] 0.023 | Entropy: 6.49 | Effective:    2 | Top5: '. ':0.023, '.':0.013, 's, ':0.008
+  T=5.0  | Top1: [........................................] 0.004 | Entropy: 6.86 | Effective:    0 | Top5: '. ':0.004, '.':0.003, 's, ':0.003
+
+  Observa:
+  - T=0.1: el top-1 tiene >90% de probabilidad (casi greedy)
+  - T=1.0: distribucion original del modelo
+  - T=5.0: distribucion casi uniforme (puro azar)
+  - Entropy sube con la temperatura (mas incertidumbre)
+  - Effective tokens: cuantos tienen >1% de probabilidad
+
+  Prompt: "The soldier marched"
+
+  Como la temperatura cambia la distribucion:
+
+  T=0.1  | Top1: [#######################################.] 0.999 | Entropy: 0.01 | Effective:    1 | Top5: 's ':0.999, '. ':0.001, ', ':0.000
+  T=0.5  | Top1: [##############################..........] 0.758 | Entropy: 0.88 | Effective:    4 | Top5: 's ':0.758, '. ':0.177, ', ':0.011
+  T=1.0  | Top1: [###########.............................] 0.279 | Entropy: 3.81 | Effective:   12 | Top5: 's ':0.279, '. ':0.135, ', ':0.033
+  T=2.0  | Top1: [#.......................................] 0.036 | Entropy: 6.17 | Effective:    7 | Top5: 's ':0.036, '. ':0.025, ', ':0.012
+  T=5.0  | Top1: [........................................] 0.005 | Entropy: 6.79 | Effective:    0 | Top5: 's ':0.005, '. ':0.004, ', ':0.003
+
+  Observa:
+  - T=0.1: el top-1 tiene >90% de probabilidad (casi greedy)
+  - T=1.0: distribucion original del modelo
+  - T=5.0: distribucion casi uniforme (puro azar)
+  - Entropy sube con la temperatura (mas incertidumbre)
+  - Effective tokens: cuantos tienen >1% de probabilidad
+
+======================================================================
+DEMO 4: KV-Cache -- La Optimizacion Clave
+======================================================================
+
+  Sin KV-cache: cada token nuevo requiere re-procesar
+  TODA la secuencia. Con 100 tokens, el token #100
+  requiere 100 forward passes de 100 tokens = 10,000 ops.
+
+  Con KV-cache: cada token nuevo solo procesa 1 token.
+  Los K,V de los tokens anteriores se guardan en memoria.
+  Con 100 tokens: 100 forward passes de 1 token = 100 ops.
+
+  Benchmark: generacion de 50 tokens
+                          Prompt |    Sin cache |    Con cache |  Speedup
+  ------------------------------ | ------------ | ------------ | --------
+             To be, or not to be |     43.6 t/s |     35.9 t/s |    0.82x
+             The king of England |     63.0 t/s |    107.6 t/s |    1.71x
+      In the beginning there was |     92.9 t/s |    107.3 t/s |    1.16x
+
+  Speedup promedio: 1.07x
+
+  Nota: en nuestro modelo de 981K params el speedup es modesto
+  porque el modelo es muy pequeno. En un modelo de 7B+ params,
+  el KV-cache da speedups de 5-20x porque la attention es O(n^2).
+
+  Ejemplo de generacion:
+  Prompt: "Once upon a time"
+  Sin cache:  "ce, the croke and crir. He dror is grokes of cokes and monges and by his sor"
+  Con cache:  "d. He is three and throking and dealy, for mesenter and desrokes is soldierealogesp"
+  (Diferente texto porque sampling es estocastico)
+
+======================================================================
+DEMO 5: Generacion Token por Token (Camara Lenta)
+======================================================================
+
+  Vamos a ver EXACTAMENTE que pasa en cada paso.
+  Para cada token generado, mostramos las 5 opciones
+  mas probables y cual fue elegida.
+
+  Prompt: "To be, or not to be"
+  Generando 15 tokens en camara lenta...
+
+  Step  1 |   8.9ms | Entropy: 2.11 | Elegido: 'fore ' (p=0.0478)
+             't': 0.5005
+             'd': 0.1067
+            'th': 0.1018
+             'l': 0.0562
+         'fore ': 0.0478 <--
+
+  Step  2 |   8.8ms | Entropy: 3.25 | Elegido: 'the ' (p=0.2825)
+          'the ': 0.2825 <--
+            'a ': 0.1048
+          'and ': 0.0796
+          'his ': 0.0376
+             'd': 0.0366
+
+  Step  3 |   9.0ms | Entropy: 3.39 | Elegido: 'li' (p=0.0265)
+             'd': 0.2244
+             'm': 0.1276
+             't': 0.0584
+             'f': 0.0550
+             's': 0.0476
+
+  Step  4 |   8.9ms | Entropy: 2.94 | Elegido: 't' (p=0.2899)
+             't': 0.2899 <--
+           'es ': 0.1305
+             'v': 0.1003
+             'd': 0.0744
+            'tt': 0.0534
+
+  Step  5 |   9.1ms | Entropy: 1.86 | Elegido: '. ' (p=0.3950)
+            '. ': 0.3950 <--
+           'er ': 0.3657
+            'y ': 0.0627
+           'ed ': 0.0276
+             'u': 0.0221
+
+  Step  6 |   9.2ms | Entropy: 1.53 | Elegido: 'I' (p=0.3812)
+             'I': 0.3812 <--
+           'He ': 0.2986
+          'The ': 0.2400
+             'H': 0.0123
+             'P': 0.0067
+
+  Step  7 |   9.2ms | Entropy: 0.01 | Elegido: 't ' (p=0.9990)
+            't ': 0.9990 <--
+            's ': 0.0005
+         ' thin': 0.0001
+             't': 0.0000
+            'd ': 0.0000
+
+  Step  8 |   9.3ms | Entropy: 1.91 | Elegido: 'be ' (p=0.0180)
+           'is ': 0.5897
+          'are ': 0.1560
+             'd': 0.0266
+          'not ': 0.0203
+          'the ': 0.0202
+
+  Step  9 |   9.2ms | Entropy: 3.09 | Elegido: 'the ' (p=0.0226)
+             'd': 0.2626
+            'a ': 0.1777
+           'be ': 0.0891
+            'be': 0.0415
+             'f': 0.0375
+
+  Step 10 |   9.2ms | Entropy: 3.30 | Elegido: 'c' (p=0.0706)
+             'd': 0.1674
+             'm': 0.1663
+             'f': 0.0843
+             't': 0.0732
+             'c': 0.0706 <--
+
+  Step 11 |   9.3ms | Entropy: 1.51 | Elegido: 'r' (p=0.7191)
+             'r': 0.7191 <--
+             'o': 0.0326
+            'ur': 0.0279
+             'u': 0.0196
+            'ea': 0.0193
+
+  Step 12 |   9.4ms | Entropy: 0.17 | Elegido: 'o' (p=0.9769)
+             'o': 0.9769 <--
+            'ow': 0.0118
+            'on': 0.0013
+            'ea': 0.0010
+            'an': 0.0010
+
+  Step 13 |   9.5ms | Entropy: 1.03 | Elegido: 've ' (p=0.0351)
+             'k': 0.8278
+           've ': 0.0351 <--
+           'ke ': 0.0252
+            'r ': 0.0094
+            'th': 0.0085
+
+  Step 14 |   9.6ms | Entropy: 1.97 | Elegido: 'the ' (p=0.1263)
+          'and ': 0.5032
+          'his ': 0.1295
+          'the ': 0.1263 <--
+           'of ': 0.0693
+           'to ': 0.0339
+
+  Step 15 |   9.6ms | Entropy: 3.24 | Elegido: 'king' (p=0.0191)
+             'm': 0.1769
+             'c': 0.1275
+             'd': 0.1198
+             't': 0.0818
+             'f': 0.0597
+
+  Resultado final: "To be, or not to before the lit. It be the crove the king"
+
+======================================================================
+LECCION DEL EJERCICIO 4
+======================================================================
+
+Lo que demostramos:
+
+  1. FORWARD PASS:
+     Cada token pasa por embedding -> N bloques transformer -> head.
+     La salida es un vector de probabilidades sobre TODO el vocabulario.
+     NO hay "pensamiento" -- solo multiplicacion de matrices.
+
+  2. SAMPLING:
+     La misma distribucion de probabilidades puede generar texto
+     MUY diferente segun como elijamos:
+     - Greedy: siempre el mas probable -> repetitivo
+     - Temperatura baja: conservador, coherente
+     - Temperatura alta: creativo, incoherente
+     - Top-k: elimina tokens basura, equilibrado
+     - Top-p: adaptativo, el estandar actual
+
+  3. TEMPERATURA:
+     No cambia lo que el modelo "sabe" -- solo cuanto "duda".
+     T=0.1 y T=5.0 usan EXACTAMENTE los mismos pesos.
+     La diferencia esta en el softmax, no en el modelo.
+
+  4. KV-CACHE:
+     Sin cache: O(n^2) operaciones para n tokens.
+     Con cache: O(n) operaciones.
+     En modelos grandes (7B+), esto es 5-20x mas rapido.
+     Es la razon por la que los LLMs pueden responder en segundos.
+
+  5. LA IMPLICACION PARA SEGURIDAD:
+     Si entiendes que el modelo solo produce probabilidades,
+     entiendes por que los "guardrails" son fragiles.
+     Un jailbreak simplemente cambia las probabilidades
+     para que los tokens "prohibidos" se vuelvan mas probables.
+     No hay un "modulo de seguridad" separado -- todo es estadistica.
+
+En el siguiente ejercicio construiremos TOOL CALLING desde cero:
+como el modelo genera JSON para ejecutar funciones externas.
+
+EXIT CODE: 0

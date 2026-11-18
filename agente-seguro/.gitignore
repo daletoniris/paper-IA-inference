@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Generados por el agente
+memory.json
+generated_scripts/*.py
+
+# Backups y tests
+*.bak
+*.bak.*
+test_fix.py
+
+# Tunnel/systemd (setup personal)
+*.service
+start_vps_tunnel.sh
+
+# Sistema
+.DS_Store

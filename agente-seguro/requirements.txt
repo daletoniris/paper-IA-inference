@@ -1,0 +1,16 @@
+# =============================================================
+# Dependencias para el Agente TokioAI Mini
+# =============================================================
+#
+# Instalar:  pip install -r requirements.txt
+#
+# Solo 2 dependencias. El modelo de IA lo provee Ollama
+# (que se instala aparte, no es un paquete Python).
+# =============================================================
+
+# SDK OpenAI-compatible -- funciona con Ollama, vLLM, OpenRouter, etc.
+# Ollama expone la misma API que OpenAI, asi que usamos esta libreria
+openai>=1.30.0
+
+# Carga variables desde el archivo .env (configuracion)
+python-dotenv>=1.0.0

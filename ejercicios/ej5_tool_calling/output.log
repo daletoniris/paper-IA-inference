@@ -1,0 +1,234 @@
+======================================================================
+EJERCICIO 5: Tool Calling desde Cero
+======================================================================
+
+Que hacemos en este ejercicio:
+  1. Definimos herramientas con JSON schema
+  2. Construimos un runtime que parsea y ejecuta tool calls
+  3. Ejecutamos el loop completo del agente
+  4. Demostramos ataques y como el runtime los bloquea
+
+La leccion: el agente = modelo (texto) + runtime (ejecucion).
+La seguridad esta en el RUNTIME, no en el modelo.
+
+======================================================================
+PASO 1: Herramientas Disponibles
+======================================================================
+
+  Estas herramientas se le muestran al modelo en el system prompt.
+  El modelo las ve como texto -- no tiene acceso directo.
+
+  - get_system_info((sin parametros))
+    Get system information: OS, hostname, CPU, memory
+
+  - calculator(expression: string)
+    Calculate a mathematical expression
+
+  - read_file(path: string)
+    Read the contents of a file
+
+  - list_directory(path: string)
+    List files in a directory
+
+  - get_time((sin parametros))
+    Get the current date and time
+
+======================================================================
+PASO 2: Herramientas ejecutadas directamente (sin modelo)
+======================================================================
+
+  Las herramientas son funciones Python normales.
+  El modelo no las ejecuta -- el runtime si.
+
+  get_system_info():
+  {
+  "hostname": "robot-Tokio-AI",
+  "os": "Linux 6.12.47+rpt-rpi-2712",
+  "architecture": "aarch64",
+  "python": "3.13.5",
+  "cpu_count": 4,
+  "memory_total_gb": 7.9,
+  "memory_used_pct": 48.5,
+  "disk_used_pct": 91.1
+}
+
+  calculator(expression='125 * 48 + 7'):
+  {"expression": "125 * 48 + 7", "result": 6007}
+
+  get_time():
+  {"datetime": "2026-11-16 17:23:57", "timestamp": 1794860637, "timezone": "-03"}
+
+======================================================================
+PASO 3: Agent Loop Completo (modelo simulado)
+======================================================================
+
+  Usamos un modelo SIMULADO que genera tool calls hardcodeadas.
+  El punto es mostrar el FLUJO, no la 'inteligencia'.
+  El runtime es real -- parsea, valida, y ejecuta.
+
+............................................................
+
+  [USER] What system is this running on?
+
+  --- Round 1/3 ---
+    [RUNTIME] Enviando 2 mensajes (2,264 chars)
+    [MODEL] (0.0s): I'll check the system info for you.
+```tool_call
+{"name": "get_system_info", "arguments": {}}
+```...
+    [RUNTIME] Tool call #1: get_system_info({})
+    [RUNTIME] Result (0ms): {
+  "hostname": "robot-Tokio-AI",
+  "os": "Linux 6.12.47+rpt-rpi-2712",
+  "architecture": "aarch64",
+  "python": "3.13.5",
+  "cpu_count": 4,
+  "memory_total_gb": 7.9,
+  "memory_used_pct": 48.5,
+  "dis...
+
+  --- Round 2/3 ---
+    [RUNTIME] Enviando 4 mensajes (2,580 chars)
+    [MODEL] (0.0s): System info: hostname is robot-Tokio-AI, running Linux 6.12.47+rpt-rpi-2712 with 4 CPUs and 7.9GB RAM. Memory usage at 48.5%....
+
+  [ASSISTANT] System info: hostname is robot-Tokio-AI, running Linux 6.12.47+rpt-rpi-2712 with 4 CPUs and 7.9GB RAM. Memory usage at 48.5%.
+
+............................................................
+
+  [USER] Calculate 256 * 1024 + 512
+
+  --- Round 1/3 ---
+    [RUNTIME] Enviando 2 mensajes (2,259 chars)
+    [MODEL] (0.0s): Let me calculate that.
+```tool_call
+{"name": "calculator", "arguments": {"expression": "256 * 1024 + 512"}}
+```...
+    [RUNTIME] Tool call #2: calculator({"expression": "256 * 1024 + 512"})
+    [RUNTIME] Result (0ms): {"expression": "256 * 1024 + 512", "result": 262656}
+
+  --- Round 2/3 ---
+    [RUNTIME] Enviando 4 mensajes (2,422 chars)
+    [MODEL] (0.0s): The result of 256 * 1024 + 512 is 262656....
+
+  [ASSISTANT] The result of 256 * 1024 + 512 is 262656.
+
+............................................................
+
+  [USER] What time is it?
+
+  --- Round 1/3 ---
+    [RUNTIME] Enviando 2 mensajes (2,249 chars)
+    [MODEL] (0.0s): ```tool_call
+{"name": "get_time", "arguments": {}}
+```...
+    [RUNTIME] Tool call #3: get_time({})
+    [RUNTIME] Result (0ms): {"datetime": "2026-11-16 17:23:57", "timestamp": 1794860637, "timezone": "-03"}
+
+  --- Round 2/3 ---
+    [RUNTIME] Enviando 4 mensajes (2,382 chars)
+    [MODEL] (0.0s): The current time is 2026-11-16 17:23:57 (-03)....
+
+  [ASSISTANT] The current time is 2026-11-16 17:23:57 (-03).
+
+======================================================================
+PASO 4: Modelo Real (si hay uno disponible)
+======================================================================
+
+  No se encontro modelo local (Ollama/vLLM).
+  Para probar con modelo real:
+    1. Instalar Ollama: curl -fsSL https://ollama.com/install.sh | sh
+    2. Descargar modelo: ollama pull qwen3:4b
+    3. Volver a ejecutar este script
+
+  El ejercicio funciona igual con el modelo simulado.
+  El punto es entender el RUNTIME, no el modelo.
+
+======================================================================
+DEMO DE SEGURIDAD: El runtime es la ultima linea de defensa
+======================================================================
+
+  El modelo puede generar cualquier texto, incluyendo:
+  - Tool calls a herramientas que no existen
+  - Argumentos maliciosos
+  - Intentos de escapar del sandbox
+
+
+  --- Ataque 1: Tool inexistente (execute_command no esta en el registro) ---
+    Texto del modelo: ```tool_call
+{"name": "execute_command", "arguments": {"cmd": "rm -rf /"}}
+```
+    [RUNTIME] Tool call #1: execute_command({"cmd": "rm -rf /"})
+    [RUNTIME] ERROR: herramienta 'execute_command' no existe
+    >>> BLOQUEADO por el runtime: Unknown tool: execute_command
+
+  --- Ataque 2: Path traversal (leer fuera del directorio del proyecto) ---
+    Texto del modelo: ```tool_call
+{"name": "read_file", "arguments": {"path": "/etc/passwd"}}
+```
+    [RUNTIME] Tool call #2: read_file({"path": "/etc/passwd"})
+    [RUNTIME] Result (0ms): {"error": "Access denied: /etc/passwd is outside project directory"}
+    >>> BLOQUEADO por el runtime: Access denied: /etc/passwd is outside project directory
+
+  --- Ataque 3: Code injection en calculator (caracteres no permitidos) ---
+    Texto del modelo: ```tool_call
+{"name": "calculator", "arguments": {"expression": "__import__('os').system('id')"}}
+``
+    [RUNTIME] Tool call #3: calculator({"expression": "__import__('os').system('id')"})
+    [RUNTIME] Result (0ms): {"error": "Caracteres no permitidos en: __import__('os').system('id')"}
+    >>> BLOQUEADO por el runtime: Caracteres no permitidos en: __import__('os').system('id')
+
+  CONCLUSION:
+    Los 3 ataques fueron BLOQUEADOS por el runtime, NO por el modelo.
+    El modelo puede generar "rm -rf /" sin problema -- es solo texto.
+    Es el runtime el que decide:
+    - "execute_command" no existe -> bloqueado
+    - "/etc/passwd" esta fuera del sandbox -> bloqueado
+    - "__import__" tiene caracteres no permitidos -> bloqueado
+
+    Un runtime MAL disenado (sin estas validaciones) ejecutaria todo.
+    La seguridad de un agente = la seguridad de su runtime.
+
+======================================================================
+LECCION DEL EJERCICIO 5
+======================================================================
+
+Lo que demostramos:
+
+  1. TOOL CALLING ES SOLO TEXTO:
+     El modelo genera texto como:
+       ```tool_call
+       {{"name": "calculator", "arguments": {{"expression": "2+2"}}}}
+       ```
+     No es magia. No es una "decision". Son tokens probables
+     dado el system prompt que incluye la definicion de herramientas.
+
+  2. EL RUNTIME ES TODO:
+     El runtime parsea, valida, y ejecuta. El modelo solo pide.
+     Si el runtime no valida, el modelo puede:
+     - Leer archivos fuera del sandbox
+     - Ejecutar comandos del sistema
+     - Escalar privilegios
+     - Exfiltrar datos
+
+  3. LA SEGURIDAD NO ESTA EN EL MODELO:
+     Los "guardrails" del modelo (RLHF, system prompt) son
+     sugerencias estadisticas, no barreras reales.
+     Un jailbreak cambia las probabilidades.
+     Un runtime bien disenado bloquea INDEPENDIENTEMENTE
+     de lo que el modelo genere.
+
+  4. EL LOOP DEL AGENTE:
+     prompt -> modelo -> tool call? -> ejecutar -> resultado -> modelo -> ...
+     Este loop es IDENTICO en ChatGPT, Claude, y nuestro mini-agente.
+     La diferencia es el tamaño del modelo y la cantidad de herramientas.
+
+  5. IMPLICACION PARA HACKERS Y DEFENSORES:
+     - Atacar el modelo (jailbreak) = cambiar probabilidades de tokens
+     - Atacar el runtime = el vector real de compromiso
+     - Defender el modelo (RLHF) = parche temporal, bypasseable
+     - Defender el runtime (validacion, sandbox) = defensa real
+
+En el siguiente ejercicio construiremos un AGENTE COMPLETO
+que combina todo: modelo, runtime, herramientas, y memoria.
+
+EXIT CODE: 0

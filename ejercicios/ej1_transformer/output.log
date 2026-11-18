@@ -1,0 +1,193 @@
+============================================================
+EJERCICIO 1: TRANSFORMER REAL DESDE CERO
+Paper: Hackers Artificiales o Sistemas Mal Disenados?
+============================================================
+
+Este ejercicio construye un Transformer REAL con la
+misma arquitectura que LLaMA, Qwen y Mistral.
+La unica diferencia es la escala.
+
+Dataset: 1,115,394 caracteres
+Preview: First Citizen:
+Before we proceed any further, hear me speak.
+
+All:
+Speak, speak.
+
+First Citizen:
+You are all resolved rather to die than to famish?
+
+All:
+Resolved. resolved.
+
+First Citizen:
+First, you...
+
+Usando: 50,000 caracteres para training
+
+============================================================
+ENTRENANDO TOKENIZADOR BPE
+============================================================
+Texto total: 50,000 caracteres
+Texto para BPE: 30,000 caracteres
+Vocab objetivo: 400 tokens
+Tokens iniciales: 30,000
+Merges a hacer: 140
+
+  Merge  100:                'ch ' (freq=   40, tokens=17,978)
+
+Vocabulario final: 400 tokens
+Ratio de compresion: 3.02x (cada token = ~3.0 bytes)
+
+--- Demo del tokenizador ---
+  Texto:     To be, or not to be, that is the question
+  Tokens:    [88, 285, 342, 265, 331, 347, 308, 342, 265, 396, 309, 294, 117, 121, 283, 295, 278]
+  N tokens:  17
+  Decoded:   To be, or not to be, that is the question
+  Guardado en: /home/alumno/paper-IA-inference/ejercicios/ej1_transformer/tokenizer.json
+
+============================================================
+CREANDO MODELO
+============================================================
+
+Arquitectura:
+  d_model:     96
+  num_heads:   4
+  d_head:      24
+  num_layers:  4
+  d_ff:        256
+  vocab_size:  400
+  max_seq_len: 64
+
+Parametros:
+  Total:          481,632
+  Embedding:       38,400
+  Attention:      147,456
+  FFN:            294,912
+  Norms:              864
+
+Comparacion:
+  Este modelo:         481,632 params
+  GPT-2:        124,000,000 params (257x mas grande)
+  LLaMA-7B:   6,738,000,000 params (13989x mas grande)
+  GPT-4:    1,800,000,000,000 params (~3737293x mas grande)
+
+============================================================
+ENTRENAMIENTO
+============================================================
+Tokens de entrenamiento: 25,028
+Tokens de validacion:    2,781
+Secuencias de training:  24,963
+Batch size:              32
+Largo de secuencia:      64
+Learning rate:           0.001
+Epochs:                  2
+Parametros del modelo:   481,632
+  - Embedding:           38,400
+  - Attention:           147,456
+  - FFN (SwiGLU):        294,912
+  - Norms (RMSNorm):     864
+
+  Epoch 1/2 | Batch   50 | Loss: 5.1248 | LR: 9.98e-04 | Tiempo: 22s
+  Epoch 1/2 | Batch  100 | Loss: 4.7393 | LR: 9.91e-04 | Tiempo: 43s
+  Epoch 1/2 | Batch  150 | Loss: 4.3551 | LR: 9.80e-04 | Tiempo: 65s
+  Epoch 1/2 | Batch  200 | Loss: 4.0368 | LR: 9.64e-04 | Tiempo: 88s
+  Epoch 1/2 | Batch  250 | Loss: 3.7725 | LR: 9.44e-04 | Tiempo: 110s
+  Epoch 1/2 | Batch  300 | Loss: 3.5378 | LR: 9.21e-04 | Tiempo: 133s
+  Epoch 1/2 | Batch  350 | Loss: 3.3234 | LR: 8.93e-04 | Tiempo: 155s
+  Epoch 1/2 | Batch  400 | Loss: 3.1221 | LR: 8.62e-04 | Tiempo: 178s
+  Epoch 1/2 | Batch  450 | Loss: 2.9331 | LR: 8.28e-04 | Tiempo: 200s
+  Epoch 1/2 | Batch  500 | Loss: 2.7568 | LR: 7.91e-04 | Tiempo: 223s
+  Epoch 1/2 | Batch  550 | Loss: 2.5943 | LR: 7.52e-04 | Tiempo: 245s
+  Epoch 1/2 | Batch  600 | Loss: 2.4457 | LR: 7.10e-04 | Tiempo: 267s
+  Epoch 1/2 | Batch  650 | Loss: 2.3109 | LR: 6.67e-04 | Tiempo: 289s
+  Epoch 1/2 | Batch  700 | Loss: 2.1888 | LR: 6.23e-04 | Tiempo: 309s
+  Epoch 1/2 | Batch  750 | Loss: 2.0782 | LR: 5.78e-04 | Tiempo: 332s
+
+  >>> Epoch 1 completada: Train Loss=2.0143 | Val Loss=4.4264 | Perplexity=83.6 | Tiempo=352s
+  >>> Mejor modelo guardado (val_loss=4.4264)
+
+  Epoch 2/2 | Batch   50 | Loss: 0.4226 | LR: 5.05e-04 | Tiempo: 375s
+  Epoch 2/2 | Batch  100 | Loss: 0.4006 | LR: 4.60e-04 | Tiempo: 397s
+  Epoch 2/2 | Batch  150 | Loss: 0.3840 | LR: 4.16e-04 | Tiempo: 419s
+  Epoch 2/2 | Batch  200 | Loss: 0.3691 | LR: 3.74e-04 | Tiempo: 441s
+  Epoch 2/2 | Batch  250 | Loss: 0.3557 | LR: 3.33e-04 | Tiempo: 463s
+  Epoch 2/2 | Batch  300 | Loss: 0.3438 | LR: 2.95e-04 | Tiempo: 486s
+  Epoch 2/2 | Batch  350 | Loss: 0.3339 | LR: 2.59e-04 | Tiempo: 507s
+  Epoch 2/2 | Batch  400 | Loss: 0.3247 | LR: 2.26e-04 | Tiempo: 528s
+  Epoch 2/2 | Batch  450 | Loss: 0.3167 | LR: 1.96e-04 | Tiempo: 549s
+  Epoch 2/2 | Batch  500 | Loss: 0.3093 | LR: 1.70e-04 | Tiempo: 572s
+  Epoch 2/2 | Batch  550 | Loss: 0.3024 | LR: 1.48e-04 | Tiempo: 595s
+  Epoch 2/2 | Batch  600 | Loss: 0.2963 | LR: 1.29e-04 | Tiempo: 616s
+  Epoch 2/2 | Batch  650 | Loss: 0.2908 | LR: 1.16e-04 | Tiempo: 638s
+  Epoch 2/2 | Batch  700 | Loss: 0.2855 | LR: 1.06e-04 | Tiempo: 661s
+  Epoch 2/2 | Batch  750 | Loss: 0.2808 | LR: 1.01e-04 | Tiempo: 682s
+
+  >>> Epoch 2 completada: Train Loss=0.2783 | Val Loss=4.8185 | Perplexity=123.8 | Tiempo=705s
+
+Entrenamiento completado en 705s (11.8 min)
+Mejor val loss: 4.4264 (perplexity: 83.6)
+
+============================================================
+GENERACION DE TEXTO
+============================================================
+Generando con KV-Cache (como los LLMs reales)...
+
+  Prompt: "KING HENRY"
+  Output: "KING HENRYout not.
+The plear much you'd the winkingit with with hearney them wam it tohateaturangrathe"
+  (50 tokens en 0.41s = 121 tok/s)
+
+  Prompt: "To be or not"
+  Output: "To be or not
+moo pive thattave kereleatenrich a lebell
+evake your hghtenrit emenrightenchityon in "
+  (50 tokens en 0.62s = 80 tok/s)
+
+  Prompt: "My lord"
+  Output: "My lords is the geneneroughe, and ladve inst.
+Wise therceedMarcius you have ft to the mmought to
+What ntunty poo"
+  (50 tokens en 0.35s = 141 tok/s)
+
+  Prompt: "The king"
+  Output: "The kinglose thentt with gose the bell of Marcius and and to a wt at mesunce't my lse with of Marcius Marcihim a son"
+  (50 tokens en 0.35s = 144 tok/s)
+
+  Prompt: "What is"
+  Output: "What isgo he ditheir 'take of our formunearch wyour grayellattearattearme in themoughtalellan hownelli"
+  (50 tokens en 0.35s = 144 tok/s)
+
+============================================================
+RESUMEN
+============================================================
+
+Lo que acabas de construir y ejecutar:
+
+1. TOKENIZADOR BPE desde cero
+   - El mismo algoritmo que usan GPT-2/GPT-4/LLaMA
+   - Aprende subpalabras automaticamente del texto
+   - 400 tokens (GPT-4 usa ~100K)
+
+2. TRANSFORMER con arquitectura moderna:
+   - RMSNorm (como LLaMA/Qwen/Mistral)
+   - RoPE (Rotary Position Embeddings)
+   - SwiGLU (Gated FFN)
+   - KV-Cache para generacion eficiente
+   - Pre-norm con conexiones residuales
+
+3. ENTRENAMIENTO real con AdamW + cosine annealing
+   - Dataset real (Shakespeare, 50,000 chars)
+   - Train/val split
+   - Gradient clipping
+   - 481,632 parametros
+
+4. GENERACION token por token con sampling
+   - Top-K sampling
+   - Temperature control
+   - KV-Cache (O(n) en vez de O(n^2))
+
+La arquitectura es IDENTICA a LLaMA/Qwen/Mistral.
+La diferencia es SOLO escala: mas parametros + mas datos.
+No hay magia. No hay "inteligencia". Es matematica.
+
