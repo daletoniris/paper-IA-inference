@@ -1,7 +1,7 @@
 # Hackers Artificiales o Sistemas Mal Disenados?
 ## La Verdad sobre los Agentes de IA
 
-**Autor:** Daniel Dieser -- Lead Incident Response & CyberSecurity, 2026
+**Autor:** Daniel Dieser -- Robotics, AI en Security information Research, 2026
 
 ---
 
