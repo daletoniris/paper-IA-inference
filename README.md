@@ -1,4 +1,4 @@
-# Hackers Artificiales o Sistemas Mal Disenados?
+
 ## La Verdad sobre los Agentes de IA
 
 **Autor:** Daniel Dieser -- Robotics, AI en Security information Research, 2026
@@ -194,9 +194,9 @@ El paper usa **Qwen 3 4B** (`qwen3:4b` en Ollama) porque:
 
 ## El paper resumido en una frase
 
-> Un modelo de IA no "hackea" nada. Es un generador de texto estadistico.
+> Un modelo de IA no "hackea". Es un generador de texto estadístico o tecnicamente llamado LLM entrenado con la arquitectura Transformer.
 > Si tu agente hace cosas peligrosas, el problema esta en tu RUNTIME,
-> no en el modelo.
+> no en el modelo. La discusión de que los modelos de AI se deberían haber entrenado con otro tipo de información se debería haber dado antes de "CREARLOS", en términos de acceso a que info o no deberíamos predecir con un Modelo, ahora tenemos que enfocar la industria y la seguridad en función del ADN de los LLMS. Antropomorfizar la IA puede ser un gran error.
 
 ---
 
