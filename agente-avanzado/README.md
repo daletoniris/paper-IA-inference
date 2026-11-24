@@ -13,7 +13,7 @@ DevOps, hacking, automatizacion), necesitas un agente **sin restricciones
 artificiales** -- uno que pueda ejecutar comandos, leer archivos del
 sistema, conectarse por SSH a otros equipos, y resolver problemas reales.
 
-**TokioAI** es exactamente eso.
+**TokioAI** es exactamente eso. Hay que diferenciar cada cosa y contextos de implementación etc.
 
 ---
 
