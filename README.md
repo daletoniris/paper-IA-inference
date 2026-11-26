@@ -1,7 +1,7 @@
 
 ## La Verdad sobre los Agentes de IA
 
-**Autor:** Daniel Dieser -- Robotics, AI en Security information Research, 2026
+**Autor:** Daniel Dieser -- Robotics, AI & Security information Research, 2026
 
 ---
 
